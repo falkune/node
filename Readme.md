@@ -490,4 +490,54 @@ app.listen(port, () => {
 });
 ```
 
-test
+## Authentification (utilisation des tokens JWT)
+Les JSON Web Tokens (JWT) sont un moyen standardisé et sécurisé pour représenter des informations de manière compacte et vérifiable.
+
+### Utilisation
+- **Validation des Utilisateurs** : 
+Lorsqu'un utilisateur se connecte avec succes, le serveur genere un JWT et le renvoie au client. Le client stocke ce token généralement dans le stockage local ou les cookies et l'envoie dans les entetes de chaque requete suivante. Le serveur valide ce token pour authentifier l'utilisateur.
+- **Contrôle d'Acces** : 
+Les JWT peuvent contenir des informations sur les roles et les permissions de l'utilisateur. Par exemple, un JWT peut inclure un champ roles indiquant si un utilisateur est un administrateur, un editeur, etc. Le serveur peut alors utiliser ces informations pour determiner si l'utilisateur a acces a des ressources specifiques.
+
+## Comment ça marche
+Pour implementer l'authentification a l'aide des JSON Web Tokens on aura besoin d'installer le module jsonwebtoken.
+```sh
+npm install jsonwebtoken
+```
+puis declarer le cle secrete
+```ts
+const secretKey = 'phrase secrete';
+```
+dans la route pemettant de connecter un user apres verification que le login et le mot de passe sont correct on genere le token et puis on l'envoie au client.
+```ts
+const accessToken = jwt.sign(
+  { userId: user.userId }, 
+  secretKey,
+  { expiresIn: '1h' }
+);
+res.json({ accessToken });
+```
+une fois l'utilisateur connecter il va inclure le token dans les entetes de toute ses requetes pour que le serveur puisse l'authentifier et decider si il a droit d'effectuer tel ou tel autre action.
+```ts
+app.get('/protege', (req, res) => {
+  // extraire l'entete Authorization de la requete. 
+  const authHeader = req.headers['authorization'];
+  // verifier si l'entete Authorization est manquant
+  if (!authHeader) {
+    return res.send('Authorization header missing');
+  }
+  // extraire la partie token de l'entete.
+  const token = authHeader.split(' ')[1];
+  // // verifier si token est manquant
+  if (!token) {
+    return res.send('Token missing from authorization header');
+  }
+  // decodage du token
+  jwt.verify(token, secretKey, (err, user) => {
+    if (err) {
+      return res.send('Invalid or expired token');
+    }
+    res.send(`This is a protected route. User ID: ${user.userId}`);
+  });
+});
+```
